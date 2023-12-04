@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/sysinfo.h>
+#include <unistd.h>
 
 static char *load_file(char *path)
 {
@@ -18,11 +19,19 @@ static char *load_file(char *path)
 }
 void fetch_pwr_status(char *buffer, int buffer_size)
 {
-    char* battery_status = load_file("/sys/class/power_supply/BAT0/status");
+    char *filename = "/sys/class/power_supply/BAT0/status";
+
+    if(access(filename, F_OK) == -1)
+    {
+        snprintf(&buffer[0],sizeof(char)*buffer_size, "pwr: 100%%");
+        return;
+    }
+
+    char* battery_status = load_file(filename);
 
     if(strncmp(battery_status, "Discharging",sizeof(char)*11) == 0)//11 avoids including LF "Discharging\n\0"
     {
-        char* battrey_capacity = load_file("/sys/class/power_supply/BAT0/capacity");
+        char* battrey_capacity = load_file(filename);
         int length = strlen(battrey_capacity);
 
         for (int i = 0; i < length; i++)

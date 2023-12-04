@@ -127,7 +127,7 @@ void fetch_crypro_price_list(char *buffer, int buffer_size)
     for (int i = 0; i < 5; i++)
     {
         Crypto *crypto = &cryptos[i];
-        int chars_written = snprintf(&buffer[caret],sizeof(char)*buffer_size, "$%s: %s ",&crypto->ticker_symbol[0], &crypto->price_formatted[0]);
+        int chars_written = snprintf(&buffer[caret],sizeof(char)*buffer_size, "$%s:%s ",&crypto->ticker_symbol[0], &crypto->price_formatted[0]);
         if (chars_written < 0)return;
         caret += chars_written;
 
