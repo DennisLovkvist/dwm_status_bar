@@ -31,7 +31,7 @@ void fetch_pwr_status(char *buffer, int buffer_size)
 
     if(strncmp(battery_status, "Discharging",sizeof(char)*11) == 0)//11 avoids including LF "Discharging\n\0"
     {
-        char* battrey_capacity = load_file(filename);
+        char* battrey_capacity = load_file("/sys/class/power_supply/BAT0/capacity");
         int length = strlen(battrey_capacity);
 
         for (int i = 0; i < length; i++)
