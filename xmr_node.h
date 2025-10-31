@@ -3,83 +3,80 @@
 #include <stdio.h>
 #include <string.h>
 
-#define XMR_NODE_IP "127.0.0.1"
-#define XMR_NODE_USER "admin"
+#define XMR_NODE_IP      "127.0.0.1"
+#define XMR_NODE_USER    "delo"
+#define XMR_NODE_COMMAND "curl -s http://127.0.0.1:18081/get_info"
 
 int xmr_node_check_status()
 {
-    ssh_session session;
-    ssh_channel channel;
+    ssh_session session = NULL;
+    ssh_channel channel = NULL;
     int rc;
     char buffer[1024];
     int nbytes;
+    int result = 1; // default: failure
 
     session = ssh_new();
-    if (session == NULL)return 1;
-    
+    if (session == NULL)
+    {
+        goto cleanup;
+    }
+
     ssh_options_set(session, SSH_OPTIONS_HOST, XMR_NODE_IP);
     ssh_options_set(session, SSH_OPTIONS_USER, XMR_NODE_USER);
 
     rc = ssh_connect(session);
-    if (rc != SSH_OK) 
+    if (rc != SSH_OK)
     {
-        ssh_free(session);
-        return 1;
+        goto cleanup;
     }
 
     rc = ssh_userauth_publickey_auto(session, NULL, NULL);
-    if (rc != SSH_AUTH_SUCCESS) 
+    if (rc != SSH_AUTH_SUCCESS)
     {
-        ssh_disconnect(session);
-        ssh_free(session);
-        return 1;
+        goto cleanup;
     }
 
     channel = ssh_channel_new(session);
-    if (channel == NULL) return 1;
-
-    rc = ssh_channel_open_session(channel);
-    if (rc != SSH_OK) 
+    if (channel == NULL)
     {
-        ssh_channel_free(channel);
-        ssh_disconnect(session);
-        ssh_free(session);
-        return 1;
+        goto cleanup;
     }
 
-    rc = ssh_channel_request_exec(channel, "curl -s http://127.0.0.1:18081/get_info");
-    if (rc != SSH_OK) 
+    rc = ssh_channel_open_session(channel);
+    if (rc != SSH_OK)
     {
-        ssh_channel_close(channel);
-        ssh_channel_free(channel);
-        ssh_disconnect(session);
-        ssh_free(session);
-        return 1;
+        goto cleanup;
+    }
+
+    rc = ssh_channel_request_exec(channel, XMR_NODE_COMMAND);
+    if (rc != SSH_OK)
+    {
+        goto cleanup;
     }
 
     nbytes = ssh_channel_read(channel, buffer, sizeof(buffer) - 1, 0);
     if (nbytes > 0) 
     {
-        buffer[nbytes] = '\0'; // null-terminate
-        if (strstr(buffer, "\"height\"")) 
+        buffer[nbytes] = '\0';
+        if (strstr(buffer, "\"height\""))
         {
-            return 0;
-        } 
-        else 
-        {
-            return 1;
+            result = 0;
         }
-    } 
-    else 
-    {
-        return 1;
     }
 
-    ssh_channel_send_eof(channel);
-    ssh_channel_close(channel);
-    ssh_channel_free(channel);
-    ssh_disconnect(session);
-    ssh_free(session);
+    cleanup:
+    if (channel) 
+    {
+        ssh_channel_send_eof(channel);
+        ssh_channel_close(channel);
+        ssh_channel_free(channel);
+    }
+    if (session) 
+    {
+        ssh_disconnect(session);
+        ssh_free(session);
+    }
 
-    return 0;
+    return result;
 }
